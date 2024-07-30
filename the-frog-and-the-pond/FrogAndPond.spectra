@@ -1,0 +1,79 @@
+import "./imports/DwyerPatterns.spectra"
+
+spec FrogAndPond
+
+define DX := 7; // grid of 8X8
+define DY := 7; // grid of 8X8
+type DimX = Int(0..DX);
+type DimY = Int(0..DY);
+
+env DimX freePoint1X;
+env DimY freePoint1Y;
+env DimX freePoint2X;
+env DimY freePoint2Y;
+ 
+sys DimX frogX;
+sys DimY frogY;
+
+// sys boolean carsMove; - We decided not to use this bool var
+
+// free points locations
+asm ini freePoint1X = 2; 
+asm ini freePoint1Y = 4;
+asm ini freePoint2X = 5;
+asm ini freePoint2Y = 6;
+
+//frog start
+gar ini frogX = 0  & frogY = 0;
+
+//frogs goal
+define atPond := frogX = 7 & frogY = 7; // The pond located on the bottom right corner of the gird
+
+//possible next steps of the frog
+define frogMoves := (frogX+1 = next(frogX)) | (frogX-1 = next(frogX)) | (frogY+1 = next(frogY)) | (frogY-1 = next(frogY));
+
+//make sure that the coordinates don't move
+predicate freezeX(DimX dimx):
+next(dimx) = dimx;
+
+predicate freezeY(DimY dimy):
+next(dimy) = dimy;
+
+//possible moves of the frog (as we saw in class)
+predicate moveX(DimX pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+  
+predicate moveY(DimY pos):
+  pos+1 = next(pos) |
+  pos   = next(pos) |
+  pos-1 = next(pos);  
+
+//count the steps of the frog using modulo (as a base for req 2.c)
+counter frogMoveCount(0..3) {
+	frogMoveCount = 0;
+	inc: frogMoves;
+	overflow: modulo; 
+}
+
+//req 2.c - The cars should move three times slower than the frog 
+asm alw frogMoveCount = 3 implies (moveY(freePoint1Y) & moveY(freePoint2Y));
+
+
+gar alwEv atPond; // The frog should move back home to the pond and stay there forever
+gar alw atPond implies freezeX(frogX) & freezeY(frogY); // stop condition
+
+
+gar alw moveX(frogX) & moveY(frogY); //req 1
+  
+asm alw freezeX(freePoint1X) & freezeX(freePoint2X); //The free points should not move from 3rd and 6th columns
+asm alw (frogX = 2 | frogX = 5) implies freezeY(freePoint1Y) & freezeY(freePoint2Y); // req 2.e 
+
+// Moving the free points  
+asm alw moveY(freePoint1Y);
+asm alw moveY(freePoint2Y); 
+
+// If the frog isn't near a free point, then it should not move to the cars line (not get hit by a car)
+gar alw (next(frogY) != next(freePoint1Y)) implies next(frogX) != freePoint1X;
+gar alw (next(frogY) != next(freePoint2Y)) implies next(frogX) != freePoint2X;
